@@ -11,7 +11,7 @@ import generateProblem from "@/lib/math";
 const digitsOptions = [2, 3, 4, 5, 6];
 const operatorOptions = ["+", "-", "*"];
 const unknownIndexOptions = [0, 1, 2, "r"];
-const timeLimitOptions = [-1, 60, 40, 30, 20, 10, 5];
+const timeLimitOptions = [-1, 60, 40, 30, 20, 10, 5, 3];
 
 export default function Home() {
   const [totalDigits, setTotalDigits] = useState(null);
