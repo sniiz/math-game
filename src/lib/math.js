@@ -49,9 +49,18 @@ function generateProblem(
     problem = `${a} ${operator} ${b} = ?`;
   }
 
+  if (window?.location?.hostname === "localhost")
+    console.log({
+      a,
+      b,
+      result,
+      problem,
+      unknownIndex,
+    });
+
   return {
     problem,
-    answer: [a, b, result][unknownIndex],
+    answer: [a, b, result][unknownIndex % 3],
   };
 }
 

@@ -18,6 +18,7 @@ export default function Home() {
   const [operator, setOperator] = useState(null);
   const [allowNegative, setAllowNegative] = useState(null);
   const [unknownIndex, setUnknownIndex] = useState(null);
+  const [sfx, setSfx] = useState(null);
   const [timeLimit, setTimeLimit] = useState(null);
   const [example, setExample] = useState("");
 
@@ -44,11 +45,21 @@ export default function Home() {
   }, [timeLimit]);
 
   useEffect(() => {
+    if (sfx !== null) localStorage.setItem("sfx", sfx);
+  }, [sfx]);
+
+  useEffect(() => {
     setTotalDigits(parseInt(localStorage.getItem("totalDigits")) || 4);
     setOperator(localStorage.getItem("operator") || "+");
     setAllowNegative(localStorage.getItem("allowNegative") === "true");
-    setUnknownIndex(parseInt(localStorage.getItem("unknownIndex")) || 2);
+    // setUnknownIndex(parseInt(localStorage.getItem("unknownIndex")) || 2);
+    setUnknownIndex(
+      localStorage.getItem("unknownIndex") === "r"
+        ? "r"
+        : parseInt(localStorage.getItem("unknownIndex")) || 2
+    );
     setTimeLimit(parseInt(localStorage.getItem("timeLimit")) || -1);
+    setSfx(localStorage.getItem("sfx") === "true");
   }, []);
 
   useEffect(() => {
@@ -67,7 +78,7 @@ export default function Home() {
       totalDigits % 2 === 0 ? totalDigits / 2 : (totalDigits - 1) / 2,
       operator,
       allowNegative,
-      unknownIndex === "r" ? Math.floor(Math.random() * 2) : unknownIndex
+      unknownIndex === "r" ? Math.floor(Math.random() * 3) : unknownIndex
     );
     return problem;
   }
@@ -157,7 +168,14 @@ export default function Home() {
             }
           >
             <span>time limit</span>
-            <span>{timeLimit === -1 ? "none" : timeLimit + "s"}</span>
+            <span>{timeLimit === -1 ? "ထ" : timeLimit + "s"}</span>
+          </button>
+          <button
+            className="flex flex-row items-center justify-between w-full mt-2 px-4 py-2 rounded-lg border text-sm hover:bg-secondary active:bg-primary active:text-background transition-colors duration-100"
+            onClick={() => setSfx((sfx) => !sfx)}
+          >
+            <span>ui sfx</span>
+            <span>{sfx ? "on" : "off"}</span>
           </button>
         </div>
         <Button className="font-bold w-full mt-6" size="lg" asChild>

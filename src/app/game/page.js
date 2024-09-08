@@ -8,15 +8,27 @@ import { Button } from "@/components/ui/button";
 
 import generateProblem from "@/lib/math";
 import { useParams, useSearchParams } from "next/navigation";
+import useSound from "use-sound";
+
+const volume = 0.3;
 
 function Home() {
   const searchParams = useSearchParams();
-  // const totalDigitsInit = parseInt(searchParams.get("d")) || 4;
-  // const operatorInit = ["+", "-", "*"][searchParams.get("o") || 0];
-  // const allowNegativeInit = searchParams.get("n") === "1";
-  // const unknownIndexInit = parseInt(searchParams.get("u")) || 2;
+
+  const [correctSfx] = useSound("/sfx/correct.mp3", {
+    volume,
+    interrupt: true,
+  });
+  const [eraseSfx] = useSound("/sfx/erase.mp3", { volume, interrupt: true });
+  const [errorSfx] = useSound("/sfx/error.mp3", { volume, interrupt: true });
+  const [overSfx] = useSound("/sfx/over.mp3", { volume, interrupt: true });
+  const [lowTimeSfx] = useSound("/sfx/lowtime.mp3", {
+    volume,
+    interrupt: true,
+  });
+  const [typeSfx] = useSound("/sfx/type.mp3", { volume, interrupt: true });
+
   const timeLimitInit = parseInt(searchParams.get("t")) || -1;
-  // const timeLimitInit = 20;
 
   const [isWrong, setIsWrong] = useState(false);
 
@@ -28,23 +40,25 @@ function Home() {
 
   const [gameOver, setGameOver] = useState(false);
 
-  // const [totalDigits, setTotalDigits] = useState(totalDigitsInit);
-  // const [operator, setOperator] = useState(operatorInit);
-  // const [allowNegative, setAllowNegative] = useState(allowNegativeInit);
-  // const [unknownIndex, setUnknownIndex] = useState(unknownIndexInit);
   const [timeLimit, setTimeLimit] = useState(timeLimitInit);
-
-  const [totalDigits, setTotalDigits] = useState(4);
-  const [operator, setOperator] = useState("+");
-  const [allowNegative, setAllowNegative] = useState(false);
-  const [unknownIndex, setUnknownIndex] = useState(2);
+  const [totalDigits, setTotalDigits] = useState(null);
+  const [operator, setOperator] = useState(null);
+  const [allowNegative, setAllowNegative] = useState(null);
+  const [unknownIndex, setUnknownIndex] = useState(null);
+  const [sfx, setSfx] = useState(null);
+  const [lowTimeNotified, setLowTimeNotified] = useState(false);
 
   useEffect(() => {
     setTotalDigits(parseInt(localStorage.getItem("totalDigits") || "4"));
     setOperator(localStorage.getItem("operator") || "+");
     setAllowNegative(localStorage.getItem("allowNegative") === "true");
-    setUnknownIndex(parseInt(localStorage.getItem("unknownIndex") || "2"));
-    // setTimeLimit(parseInt(localStorage.getItem("timeLimit") || "-1"));
+    // setUnknownIndex(parseInt(localStorage.getItem("unknownIndex") || "2"));
+    setUnknownIndex(
+      localStorage.getItem("unknownIndex") === "r"
+        ? "r"
+        : parseInt(localStorage.getItem("unknownIndex") || "2")
+    );
+    setSfx(localStorage.getItem("sfx") === "true");
   }, []);
 
   const [deadline, setDeadline] = useState(0);
@@ -53,6 +67,15 @@ function Home() {
   const [fastestSolve, setFastestSolve] = useState({});
 
   useEffect(() => {
+    if (
+      totalDigits === null ||
+      operator === null ||
+      allowNegative === null ||
+      unknownIndex === null
+    ) {
+      return () => {};
+    }
+
     const { problem, answer } = generateProblem(
       // totalDigits / 2,
       // totalDigits / 2,
@@ -60,20 +83,31 @@ function Home() {
       totalDigits % 2 === 0 ? totalDigits / 2 : (totalDigits - 1) / 2,
       operator,
       allowNegative,
-      unknownIndex === "r" ? Math.floor(Math.random() * 2) : unknownIndex
+      unknownIndex === "r" ? Math.floor(Math.random() * 3) : unknownIndex
     );
 
     setProblem(problem);
     setAnswer(answer);
+    setLowTimeNotified(false);
     setUserAnswer("");
-    setDeadline(timeLimit === -1 ? null : Date.now() + timeLimit * 1000);
+    let dl = timeLimit === -1 ? null : Date.now() + timeLimit * 1000;
+    setDeadline(dl);
+    // const currentDeadline = dl;
+    // if (timeLimit !== -1 && sfx) {
+    //   setTimeout(() => {
+    //     console.log(currentDeadline, deadline);
+    //     if (currentDeadline === deadline) lowTimeSfx(volume);
+    //   }, (timeLimit - 5) * 1000);
+    // }
     setCorrect(0);
     // setGameOver(false);
   }, [totalDigits, operator, allowNegative, unknownIndex]);
 
-  const checkAnswer = (ua) => {
+  const checkAnswer = (ua, noSound = false) => {
     if (parseInt(ua) === answer) {
       setCorrect((c) => c + 1);
+      // if (sfx) correctSfx(volume);
+      if (!noSound && sfx) correctSfx(volume);
       setUserAnswer("");
 
       const solveTime =
@@ -91,17 +125,29 @@ function Home() {
       );
       setProblem(newProblem);
       setAnswer(newAnswer);
+      setLowTimeNotified(false);
       setIsWrong(false);
 
       if (timeLimit !== -1) {
-        setDeadline(Date.now() + timeLimit * 1000);
+        let dl = Date.now() + timeLimit * 1000;
+        setDeadline(dl);
+        // const currentDeadline = dl.valueOf();
+        // if (!noSound && sfx) {
+        //   setTimeout(() => {
+        //     if (currentDeadline === deadline) lowTimeSfx(volume);
+        //   }, (timeLimit - 5) * 1000);
+        // }
       }
     } else {
       if (ua.length === 0) return;
       if (ua.length >= answer.toString().length) {
         setIsWrong(true);
+        // if (sfx) errorSfx(volume);
+        if (!noSound && sfx) errorSfx(volume);
       } else {
         setIsWrong(false);
+        // if (sfx) typeSfx(volume);
+        if (!noSound && sfx) typeSfx(volume);
       }
     }
   };
@@ -112,12 +158,26 @@ function Home() {
         setNow(Date.now());
         if (now >= deadline) {
           setGameOver(true);
+          // if (sfx) overSfx(volume);
           clearInterval(interval);
         }
       }, 10);
       return () => clearInterval(interval);
     }
   }, [deadline, now]);
+
+  useEffect(() => {
+    if (timeLimit !== -1 && !lowTimeNotified && deadline - now < 5000) {
+      lowTimeSfx(volume);
+      setLowTimeNotified(true);
+    }
+  }, [now, deadline, lowTimeNotified]);
+
+  useEffect(() => {
+    if (gameOver) {
+      if (sfx) overSfx(volume);
+    }
+  }, [gameOver]);
 
   const typeNumber = (number) => {
     if (isNaN(number) && number !== "-") return;
@@ -132,7 +192,8 @@ function Home() {
         checkAnswer();
       } else if (event.key === "Backspace") {
         setUserAnswer(userAnswer.slice(0, -1));
-        checkAnswer(userAnswer.slice(0, -1));
+        checkAnswer(userAnswer.slice(0, -1), true);
+        if (sfx) eraseSfx(volume);
       } else if (!isNaN(event.key) || event.key === "-") {
         typeNumber(isNaN(event.key) ? event.key : parseInt(event.key));
       }
@@ -161,7 +222,7 @@ function Home() {
             }}
           >
             <span>play again</span>
-            <ArrowRight />
+            <ArrowRight size={16} />
           </Button>
           <Button
             className="px-4 py-2 rounded-lg flex items-center justify-center space-x-2 mt-2 w-full"
@@ -170,7 +231,7 @@ function Home() {
             }}
             variant="outline"
           >
-            <ArrowLeft />
+            <ArrowLeft size={16} />
             <span>back to menu</span>
           </Button>
         </div>
@@ -256,7 +317,8 @@ function Home() {
           className="group w-full h-full"
           onClick={() => {
             setUserAnswer((prev) => prev.slice(0, -1));
-            checkAnswer(userAnswer.slice(0, -1));
+            checkAnswer(userAnswer.slice(0, -1), true);
+            if (sfx) eraseSfx(volume);
           }}
           tabIndex={-1}
         >
